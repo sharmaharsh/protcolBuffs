@@ -1,0 +1,110 @@
+%{
+#include <iostream>
+#include <memory>
+
+#include "proboc.h"
+
+extern "C" {
+int yyparse();
+int yylex();
+}
+
+void yyerror(const char *str) {
+  std::cerr <<  "error: " << str << std::endl;
+}
+
+int yywrap() {
+  return 1;
+}
+
+%}
+
+%token MESSAGE INT32 INT16 INT8 STRING_DECL OBRACE EBRACE EQUALS SEMICOLON
+
+%token <num> NUMBER
+%token <str> IDENTIFIER
+
+%union {
+  char *str;
+  long long num;
+}
+
+%%
+message: MESSAGE IDENTIFIER OBRACE declarations EBRACE
+{
+  std::cerr << "Added new message " << $2 << std::endl;
+  probo_messages.back().identifier = $2;
+  for (auto& x : probo_messages.back().members) {
+    x.second->SetMessageName($2);
+  } 
+  probo_messages.back().processed = true;
+  probo_messages.push_back(MessageDescriptor());
+}
+
+declarations: declaration 
+            | declarations declaration
+
+declaration: 
+              int32_member
+            | int16_member
+            | int8_member
+            | string_member
+ 
+int32_member:
+              INT32 IDENTIFIER EQUALS NUMBER SEMICOLON
+{
+  std::cerr << "declared int32 with identifier " << $2 << " as " 
+                                                 << $4 << std::endl;
+  if (probo_messages.back().members.find($4) !=
+      probo_messages.back().members.end()) {
+    std::cerr << "ERROR: Conflicting slot assignment when trying to add int32 "
+              << $2 << " = " << $4 << std::endl;
+    std::exit(-1);
+  }
+  probo_messages.back().members[$4] = std::make_unique<Int32Member>($2, $4, "");
+}
+int16_member:
+              INT16 IDENTIFIER EQUALS NUMBER SEMICOLON
+{
+  std::cerr << "declared int16 with identifier " << $2 << " as " 
+                                                 << $4 << std::endl;
+  if (probo_messages.back().members.find($4) !=
+      probo_messages.back().members.end()) {
+    std::cerr << "ERROR: Conflicting slot assignment when trying to add int16 "
+              << $2 << " = " << $4 << std::endl;
+    std::exit(-1);
+  }
+  probo_messages.back().members[$4] = std::make_unique<Int16Member>($2, $4, "");
+}
+
+int8_member:
+              INT8 IDENTIFIER EQUALS NUMBER SEMICOLON
+{
+  std::cerr << "declared int8 with identifier " << $2 << " as "
+                                                << $4 << std::endl;
+  if (probo_messages.back().members.find($4) !=
+      probo_messages.back().members.end()) {
+    std::cerr << "ERROR: Conflicting slot assignment when trying to add int8 "
+              << $2 << " = " << $4 << std::endl;
+    std::exit(-1);
+  }
+  probo_messages.back().members[$4] = std::make_unique<Int8Member>($2, $4, "");
+}
+
+string_member:
+              STRING_DECL IDENTIFIER EQUALS NUMBER SEMICOLON
+{
+  std::cerr << "declared string member with identifier " << $2 << " as "
+                                                         << $4 << std::endl;
+  if (probo_messages.back().members.find($4) !=
+      probo_messages.back().members.end()) {
+    std::cerr << "ERROR: Conflicting slot assignment when trying to add string "
+              << $2 << " = " << $4 << std::endl;
+    std::exit(-1);
+  }
+  // TODO(jamesreed): generalize size
+  probo_messages.back().members[$4] = std::make_unique<StringMember>("", $4,
+                                                                     $2, 100);
+}
+
+%%

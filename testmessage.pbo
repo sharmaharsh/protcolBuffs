@@ -1,0 +1,6 @@
+message TestMessage {
+  int32 my32 = 1;
+  int16 my16 = 2;
+  int8 my8 = 3;
+  string[100] myS100 = 4;
+}

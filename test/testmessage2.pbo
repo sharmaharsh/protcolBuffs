@@ -1,0 +1,6 @@
+message DankMessage {
+  string[10] memes = 1;
+  int32 wowow = 2;
+  int8 swag = 3;
+  string[10] danker = 4;
+}
